@@ -1,3 +1,4 @@
+
 name: Construire Fiesta Dash
 
 on:
@@ -8,26 +9,50 @@ jobs:
   build:
     runs-on: ubuntu-latest
     steps:
-      - uses: actions/checkout@v4
+      - name: Récupérer le dépôt
+        uses: actions/checkout@v4
 
       - name: Installer Java
         uses: actions/setup-java@v4
         with:
           distribution: temurin
-          java-version: 17
+          java-version: '17'
 
-      - name: Décompresser le projet
+      - name: Trouver et décompresser le projet ZIP
+        shell: bash
         run: |
-          unzip FiestaDash_3D_menu_corrige.zip
+          ZIP_FILE="$(find . -type f -iname '*.zip' -not -path './.git/*' | head -n 1)"
+          if [ -z "$ZIP_FILE" ]; then
+            echo "ERREUR : aucun fichier ZIP trouvé."
+            find . -maxdepth 4 -type f
+            exit 1
+          fi
+
+          echo "Archive trouvée : $ZIP_FILE"
+          mkdir -p extracted
+          unzip -q -o "$ZIP_FILE" -d extracted
+
+          GRADLEW="$(find extracted -type f -name gradlew | head -n 1)"
+          if [ -z "$GRADLEW" ]; then
+            echo "ERREUR : aucun fichier gradlew trouvé."
+            find extracted -maxdepth 5 -type f
+            exit 1
+          fi
+
+          PROJECT_DIR="$(dirname "$GRADLEW")"
+          echo "PROJECT_DIR=$PROJECT_DIR" >> "$GITHUB_ENV"
+          chmod +x "$GRADLEW"
 
       - name: Compiler l'APK
+        shell: bash
         run: |
-          cd FiestaDash
-          chmod +x gradlew
+          cd "$PROJECT_DIR"
           ./gradlew assembleDebug
 
-      - name: Récupérer l'APK
+      - name: Publier l'APK
         uses: actions/upload-artifact@v4
         with:
           name: FiestaDash-apk
-          path: FiestaDash/app/build/outputs/apk/debug/app-debug.apk
+          path: ${{ env.PROJECT_DIR }}/app/build/outputs/apk/debug/app-debug.apk
+          if-no-files-found: error
+
