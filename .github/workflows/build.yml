@@ -1,0 +1,33 @@
+name: Construire Fiesta Dash
+
+on:
+  push:
+  workflow_dispatch:
+
+jobs:
+  build:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+
+      - name: Installer Java
+        uses: actions/setup-java@v4
+        with:
+          distribution: temurin
+          java-version: 17
+
+      - name: Décompresser le projet
+        run: |
+          unzip FiestaDash_3D_menu_corrige.zip
+
+      - name: Compiler l'APK
+        run: |
+          cd FiestaDash
+          chmod +x gradlew
+          ./gradlew assembleDebug
+
+      - name: Récupérer l'APK
+        uses: actions/upload-artifact@v4
+        with:
+          name: FiestaDash-apk
+          path: FiestaDash/app/build/outputs/apk/debug/app-debug.apk
